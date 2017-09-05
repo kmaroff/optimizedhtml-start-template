@@ -8,6 +8,8 @@ var gulp           = require('gulp'),
 		rename         = require('gulp-rename'),
 		del            = require('del'),
 		imagemin       = require('gulp-imagemin'),
+		imageminJpegRecompress = require('imagemin-jpeg-recompress'),
+		imageminPngquant = require('imagemin-pngquant'),
 		cache          = require('gulp-cache'),
 		autoprefixer   = require('gulp-autoprefixer'),
 		ftp            = require('vinyl-ftp'),
@@ -69,7 +71,27 @@ gulp.task('imagemin', function() {
 	.pipe(gulp.dest('dist/img')); 
 });
 
-gulp.task('build', ['removedist', 'imagemin', 'sass', 'js'], function() {
+// Таск для оптимизации изображений
+gulp.task('img:prod', function () {
+  return gulp.src('app/img/**/*') //Выберем наши картинки
+    .pipe(debug({title: 'building img:', showFiles: true}))
+    .pipe(plumber(plumberOptions))
+    .pipe(gulp.dest('dist/img')) //Копируем изображения заранее, imagemin может пропустить парочку )
+    .pipe(imagemin([
+      imagemin.gifsicle({interlaced: true}),
+      imageminJpegRecompress({
+        progressive: true,
+        max: 80,
+        min: 70
+      }),
+      imageminPngquant({quality: '80'}),
+      imagemin.svgo({plugins: [{removeViewBox: true}]})
+    ]))
+    .pipe(gulp.dest('dist/img')); //И бросим в prod отпимизированные изображения
+});
+
+
+gulp.task('build', ['removedist', 'img:prod', 'sass', 'js'], function() {
 
 	var buildFiles = gulp.src([
 		'app/*.html',
